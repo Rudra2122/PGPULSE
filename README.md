@@ -2,7 +2,7 @@
 
 **Postgres query profiler + Redis cache layer with automated bottleneck detection.**
 
-Benchmarks real query performance across three states — no index/no cache, no index/with cache, and with index/with cache — using `EXPLAIN ANALYZE` to auto-detect sequential scans, missing indexes, and high-cost plans. Emits metrics to Datadog and runs on every push via CircleCI.
+Benchmarks real query performance across three states (no index/no cache, no index/with cache, with index/with cache) using `EXPLAIN ANALYZE` to auto-detect sequential scans, missing indexes, and high-cost plans. Emits metrics to Datadog and runs on every push via CircleCI.
 
 Built to simulate the class of scaling problems a backend performance team tackles daily: Postgres query bottlenecks under concurrent load, Redis caching layer design, and production-grade observability.
 
@@ -117,9 +117,9 @@ Full-table GROUP BY aggregate across order_items + products.
 | No Index / With Cache    | 8.0ms  | 1ms   | 44ms  | 45ms  | 2,000.0 req/s | 80%       |
 | With Index / With Cache  | 8.7ms  | 0ms   | 48ms  | 50ms  | 1,923.1 req/s | 80%       |
 
-**Throughput improved 344% via cache | SeqScan persists — see note below**
+**Throughput improved 344% via cache | SeqScan persists (see note below)**
 
-> **Why indexes didn't help here:** The profiler correctly identified that this full-table `GROUP BY` aggregate requires scanning all rows regardless of indexing — the query planner chose a sequential scan because it genuinely is faster for this access pattern. The right optimization here is a **materialized view with scheduled refresh**, not an index. PGPulse surfaced this automatically via `EXPLAIN ANALYZE` output rather than blindly recommending indexes.
+> **Why indexes didn't help here:** The profiler correctly identified that this full-table `GROUP BY` aggregate requires scanning all rows regardless of indexing; the query planner chose a sequential scan because it genuinely is faster for this access pattern. The right optimization here is a **materialized view with scheduled refresh**, not an index. PGPulse surfaced this automatically via `EXPLAIN ANALYZE` output rather than blindly recommending indexes.
 
 ---
 

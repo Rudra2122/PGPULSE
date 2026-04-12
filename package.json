@@ -1,0 +1,24 @@
+{
+  "name": "pgpulse",
+  "version": "1.0.0",
+  "description": "Postgres query profiler + Redis cache layer with automated bottleneck detection",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "seed": "ts-node src/db/seed.ts",
+    "benchmark": "ts-node src/benchmark/runner.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "hot-shots": "^10.0.0",
+    "ioredis": "^5.3.2",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.10.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,49 @@
+version: 2.1
+
+jobs:
+  benchmark:
+    docker:
+      - image: cimg/node:20.0
+      - image: cimg/postgres:15.0
+        environment:
+          POSTGRES_USER: pgpulse
+          POSTGRES_PASSWORD: pgpulse
+          POSTGRES_DB: pgpulse
+      - image: cimg/redis:7.0
+
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - run:
+          name: Build TypeScript
+          command: npm run build
+      - run:
+          name: Wait for services
+          command: |
+            dockerize -wait tcp://localhost:5432 -timeout 1m
+            dockerize -wait tcp://localhost:6379 -timeout 30s
+      - run:
+          name: Seed database
+          command: npm run seed
+          environment:
+            PG_HOST: localhost
+            PG_USER: pgpulse
+            PG_PASSWORD: pgpulse
+            PG_DATABASE: pgpulse
+      - run:
+          name: Run PGPulse benchmark
+          command: npm start
+          environment:
+            PG_HOST: localhost
+            PG_USER: pgpulse
+            PG_PASSWORD: pgpulse
+            PG_DATABASE: pgpulse
+            REDIS_HOST: localhost
+            DD_AGENT_HOST: localhost
+
+workflows:
+  main:
+    jobs:
+      - benchmark

@@ -1,4 +1,10 @@
-version: '3.8'
+# Default:     docker compose up -d                  -> postgres + single redis (profiler benchmark, queue baseline/kill)
+# HA profile:  docker compose --profile ha up --build ha-bench
+#              -> Redis primary + replica + 3 Sentinels
+#              -> Postgres primary + synchronous standby managed by Patroni, with a 3-node etcd cluster
+#              -> runs the chaos bench inside the network (crashes the Redis primary, then the Postgres primary)
+#              (on macOS, Sentinel/Patroni hand out container addresses, so the bench has to run inside Docker too)
+
 services:
   postgres:
     image: postgres:15
@@ -10,11 +16,116 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pgpulse"]
+      interval: 2s
+      retries: 30
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+
+  # ---------- HA profile: Redis primary + replica + 3 Sentinels ----------
+  # "; sleep infinity" keeps the container (and its DNS name) alive after the bench
+  # crashes redis-server with SHUTDOWN NOSAVE, so this behaves like a dead process on a live host.
+  redis-primary:
+    image: redis:7-alpine
+    profiles: ["ha"]
+    command: sh -c "redis-server --save '' --appendonly no --replica-announce-ip redis-primary; sleep infinity"
+
+  redis-replica:
+    image: redis:7-alpine
+    profiles: ["ha"]
+    depends_on: [redis-primary]
+    command: sh -c "redis-server --save '' --appendonly no --replicaof redis-primary 6379 --replica-announce-ip redis-replica; sleep infinity"
+
+  sentinel-1: &sentinel
+    image: redis:7-alpine
+    profiles: ["ha"]
+    depends_on: [redis-primary, redis-replica]
+    command: >
+      sh -c 'sleep 2 && printf "port 26379\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\nsentinel monitor mymaster redis-primary 6379 2\nsentinel down-after-milliseconds mymaster 2000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\n" > /tmp/sentinel.conf && redis-server /tmp/sentinel.conf --sentinel'
+  sentinel-2: *sentinel
+  sentinel-3: *sentinel
+
+  # ---------- HA profile: 3-node etcd + 2 Patroni-managed Postgres nodes ----------
+  etcd-1:
+    image: quay.io/coreos/etcd:v3.5.17
+    profiles: ["ha"]
+    command: >
+      etcd --name etcd-1 --data-dir /etcd-data
+      --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://etcd-1:2379
+      --listen-peer-urls http://0.0.0.0:2380 --initial-advertise-peer-urls http://etcd-1:2380
+      --initial-cluster etcd-1=http://etcd-1:2380,etcd-2=http://etcd-2:2380,etcd-3=http://etcd-3:2380
+      --initial-cluster-state new --initial-cluster-token pgpulse
+  etcd-2:
+    image: quay.io/coreos/etcd:v3.5.17
+    profiles: ["ha"]
+    command: >
+      etcd --name etcd-2 --data-dir /etcd-data
+      --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://etcd-2:2379
+      --listen-peer-urls http://0.0.0.0:2380 --initial-advertise-peer-urls http://etcd-2:2380
+      --initial-cluster etcd-1=http://etcd-1:2380,etcd-2=http://etcd-2:2380,etcd-3=http://etcd-3:2380
+      --initial-cluster-state new --initial-cluster-token pgpulse
+  etcd-3:
+    image: quay.io/coreos/etcd:v3.5.17
+    profiles: ["ha"]
+    command: >
+      etcd --name etcd-3 --data-dir /etcd-data
+      --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://etcd-3:2379
+      --listen-peer-urls http://0.0.0.0:2380 --initial-advertise-peer-urls http://etcd-3:2380
+      --initial-cluster etcd-1=http://etcd-1:2380,etcd-2=http://etcd-2:2380,etcd-3=http://etcd-3:2380
+      --initial-cluster-state new --initial-cluster-token pgpulse
+
+  pg-1:
+    build:
+      context: ./ha
+      dockerfile: Dockerfile.patroni
+    image: pgpulse-patroni
+    profiles: ["ha"]
+    depends_on: [etcd-1, etcd-2, etcd-3]
+    environment:
+      PATRONI_NAME: pg-1
+      PATRONI_RESTAPI_CONNECT_ADDRESS: pg-1:8008
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: pg-1:5432
+
+  pg-2:
+    image: pgpulse-patroni
+    profiles: ["ha"]
+    depends_on: [pg-1]
+    environment:
+      PATRONI_NAME: pg-2
+      PATRONI_RESTAPI_CONNECT_ADDRESS: pg-2:8008
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: pg-2:5432
+
+  ha-bench:
+    build: .
+    profiles: ["ha"]
+    depends_on:
+      pg-1: { condition: service_started }
+      pg-2: { condition: service_started }
+      sentinel-1: { condition: service_started }
+      sentinel-2: { condition: service_started }
+      sentinel-3: { condition: service_started }
+    environment:
+      PG_HOSTS: pg-1:5432,pg-2:5432
+      PG_USER: pgpulse
+      PG_PASSWORD: pgpulse
+      PG_DATABASE: postgres
+      REDIS_SENTINELS: sentinel-1:26379,sentinel-2:26379,sentinel-3:26379
+      REDIS_MASTER_NAME: mymaster
+      JOBS: ${JOBS:-10000}
+      WORKERS: ${WORKERS:-4}
+      WORK_MS: ${WORK_MS:-20}
+      RATE: ${RATE:-200}
+      DURATION_S: ${DURATION_S:-300}
+      FAULTS: ${FAULTS:-redis@0.33,postgres@0.66}
+    volumes:
+      - ./results:/app/results
+    # chaos = steady traffic + Redis primary crash + Postgres primary crash.
+    # Other scenarios: docker compose --profile ha run --rm ha-bench node dist/queue/bench.js failover
+    command: ["node", "dist/queue/chaos.js"]
 
 volumes:
   pgdata:

@@ -1,0 +1,16 @@
+{
+  "mode": "baseline",
+  "jobs": 10000,
+  "workers": 4,
+  "concurrency_per_worker": 10,
+  "work_ms": 10,
+  "fail_rate": 0,
+  "total_s": 4.62,
+  "throughput_jobs_s": 2162.6,
+  "lost_jobs": 0,
+  "double_settled_orders": 0,
+  "ledger_reconciled": true,
+  "redeliveries_absorbed": 0,
+  "failed_attempts_retried": 0,
+  "started_at": "2026-11-14T03:55:46.698Z"
+}

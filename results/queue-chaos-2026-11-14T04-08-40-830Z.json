@@ -1,0 +1,35 @@
+{
+  "mode": "chaos",
+  "faults": "redis@0.33, postgres@0.66",
+  "rate_jobs_s": 200,
+  "duration_s": 300,
+  "workers": 4,
+  "jobs": 60000,
+  "settled": 60000,
+  "lost_jobs": 0,
+  "double_settled_orders": 0,
+  "ledger_reconciled": true,
+  "redeliveries_absorbed": 0,
+  "jobs_redriven_from_outbox": 0,
+  "failed_attempts_retried": 20,
+  "seconds_with_settlements": "278/300",
+  "availability_pct": 92.67,
+  "latency_p50_ms": 265,
+  "latency_p99_ms": 17443,
+  "postgres_primary_now": "pg-2:5432",
+  "redis_primary_now": "redis-replica:6379",
+  "outages": [
+    {
+      "fault": "redis primary crash",
+      "victim": "redis-primary:6379",
+      "at_s": 99,
+      "longest_stall_ms": 4327
+    },
+    {
+      "fault": "postgres primary crash",
+      "victim": "pg-1:5432",
+      "at_s": 198.2,
+      "longest_stall_ms": 19887
+    }
+  ]
+}

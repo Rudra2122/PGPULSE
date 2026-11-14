@@ -1,0 +1,23 @@
+{
+  "mode": "kill",
+  "jobs": 10000,
+  "workers": 4,
+  "concurrency_per_worker": 10,
+  "work_ms": 10,
+  "fail_rate": 0.02,
+  "total_s": 8.33,
+  "throughput_jobs_s": 1200.9,
+  "lost_jobs": 0,
+  "double_settled_orders": 0,
+  "ledger_reconciled": true,
+  "redeliveries_absorbed": 0,
+  "failed_attempts_retried": 188,
+  "max_stall_after_fault_ms": 1660,
+  "throughput_before_fault": 2426.4,
+  "throughput_after_fault": 877.4,
+  "workers_killed": 2,
+  "stalled_jobs_recovered": 20,
+  "stalled_jobs_settled": 20,
+  "last_stalled_job_settled_after_ms": 6506,
+  "started_at": "2026-11-14T03:56:01.420Z"
+}

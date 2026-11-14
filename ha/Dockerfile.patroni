@@ -1,0 +1,9 @@
+FROM postgres:16
+RUN apt-get update && apt-get install -y --no-install-recommends python3-venv procps \
+ && python3 -m venv /opt/patroni \
+ && /opt/patroni/bin/pip install --no-cache-dir "patroni[etcd3]" psycopg2-binary \
+ && rm -rf /var/lib/apt/lists/*
+COPY patroni.yml /etc/patroni.yml
+USER postgres
+# "; sleep infinity" keeps the container (and its DNS name) up after the chaos test SIGKILLs Patroni + Postgres
+CMD ["sh", "-c", "/opt/patroni/bin/patroni /etc/patroni.yml; sleep infinity"]

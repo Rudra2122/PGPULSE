@@ -1,0 +1,22 @@
+{
+  "mode": "failover",
+  "jobs": 10000,
+  "workers": 4,
+  "concurrency_per_worker": 10,
+  "work_ms": 20,
+  "fail_rate": 0,
+  "total_s": 10.22,
+  "throughput_jobs_s": 978.7,
+  "lost_jobs": 0,
+  "double_settled_orders": 0,
+  "ledger_reconciled": true,
+  "redeliveries_absorbed": 0,
+  "failed_attempts_retried": 0,
+  "max_stall_after_fault_ms": 4153,
+  "throughput_before_fault": 1595.2,
+  "throughput_after_fault": 771.3,
+  "old_primary": "redis-primary:6379",
+  "new_primary": "redis-replica:6379",
+  "sentinel_promotion_ms": 3780,
+  "started_at": "2026-11-14T04:03:16.387Z"
+}

@@ -1,15 +1,24 @@
 {
   "name": "pgpulse",
   "version": "1.0.0",
-  "description": "Postgres query profiler + Redis cache layer with automated bottleneck detection",
+  "description": "Postgres query profiler + Redis cache layer + fault-tolerant job queue (BullMQ, Redis Sentinel, Patroni Postgres HA)",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "seed": "ts-node src/db/seed.ts",
-    "benchmark": "ts-node src/benchmark/runner.ts"
+    "benchmark": "ts-node src/benchmark/runner.ts",
+    "queue:baseline": "npm run build && node dist/queue/bench.js baseline",
+    "queue:kill": "npm run build && node dist/queue/bench.js kill",
+    "queue:failover": "npm run build && node dist/queue/bench.js failover",
+    "ha:up": "./scripts/ha-local.sh up",
+    "ha:down": "./scripts/ha-local.sh down",
+    "queue:chaos": "npm run build && node dist/queue/chaos.js",
+    "pg-ha:up": "./scripts/pg-ha-local.sh up",
+    "pg-ha:down": "./scripts/pg-ha-local.sh down"
   },
   "dependencies": {
+    "bullmq": "^5.81.5",
     "dotenv": "^16.0.3",
     "hot-shots": "^10.0.0",
     "ioredis": "^5.3.2",

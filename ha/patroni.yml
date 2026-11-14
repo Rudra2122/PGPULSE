@@ -1,0 +1,34 @@
+# Patroni config shared by pg-1 and pg-2 (docker compose --profile ha).
+# Node-specific values come from env: PATRONI_NAME, PATRONI_RESTAPI_CONNECT_ADDRESS, PATRONI_POSTGRESQL_CONNECT_ADDRESS
+scope: pgpulse
+restapi:
+  listen: 0.0.0.0:8008
+etcd3:
+  hosts: etcd-1:2379,etcd-2:2379,etcd-3:2379
+bootstrap:
+  dcs:
+    ttl: 20                # leader lease; Patroni's minimum. A dead primary is replaced within ~ttl seconds
+    loop_wait: 2
+    retry_timeout: 4
+    maximum_lag_on_failover: 1048576
+    synchronous_mode: true # COMMIT waits for the standby, so a failover can't lose a committed settlement
+    postgresql:
+      use_pg_rewind: true
+      parameters:
+        max_connections: 200
+        wal_log_hints: "on"
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+  pg_hba:
+    - local all all trust
+    - host all all 0.0.0.0/0 md5
+    - host replication replicator 0.0.0.0/0 md5
+postgresql:
+  listen: 0.0.0.0:5432
+  data_dir: /var/lib/postgresql/pgha
+  bin_dir: /usr/lib/postgresql/16/bin
+  pgpass: /tmp/pgpass
+  authentication:
+    superuser: { username: pgpulse, password: pgpulse }
+    replication: { username: replicator, password: replicator }

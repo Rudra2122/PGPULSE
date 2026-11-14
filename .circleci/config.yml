@@ -43,7 +43,43 @@ jobs:
             REDIS_HOST: localhost
             DD_AGENT_HOST: localhost
 
+  queue-resilience:
+    docker:
+      - image: cimg/node:20.0
+      - image: cimg/postgres:15.0
+        environment:
+          POSTGRES_USER: pgpulse
+          POSTGRES_PASSWORD: pgpulse
+          POSTGRES_DB: pgpulse
+      - image: cimg/redis:7.0
+    environment:
+      PG_HOST: localhost
+      PG_USER: pgpulse
+      PG_PASSWORD: pgpulse
+      PG_DATABASE: pgpulse
+      REDIS_HOST: localhost
+    steps:
+      - checkout
+      - run: npm ci
+      - run: npm run build
+      - run:
+          name: Wait for services
+          command: |
+            dockerize -wait tcp://localhost:5432 -timeout 1m
+            dockerize -wait tcp://localhost:6379 -timeout 30s
+      - run:
+          name: Kill 2 of 4 workers mid-run (exits non-zero if any job is lost or double-settled)
+          command: node dist/queue/bench.js kill
+          environment:
+            JOBS: 5000
+            WORKERS: 4
+            KILL_WORKERS: 2
+            FAIL_RATE: 0.02
+      - store_artifacts:
+          path: results
+
 workflows:
   main:
     jobs:
       - benchmark
+      - queue-resilience
